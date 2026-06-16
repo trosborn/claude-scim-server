@@ -228,8 +228,8 @@ router.patch('/:id', async (req, res) => {
           await addGroupMembers(req.params.id, value);
         }
       } else if (opName === 'remove') {
-        if (path === 'members') {
-          // SCIM filter: members[value eq "userId"]
+        if (path?.startsWith('members')) {
+          // SCIM filter path: members[value eq "userId"] or just "members"
           const memberMatch = op.path?.match(/members\[value eq "([^"]+)"\]/i);
           if (memberMatch) {
             await db.query(
