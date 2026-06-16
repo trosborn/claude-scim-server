@@ -10,6 +10,12 @@ function createApp() {
 
   app.use(express.json({ type: ['application/json', 'application/scim+json'] }));
 
+  // All SCIM responses must use application/scim+json per RFC 7644 §8.1
+  app.use('/scim', (req, res, next) => {
+    res.setHeader('Content-Type', 'application/scim+json');
+    next();
+  });
+
   // Health check — no auth required
   app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
