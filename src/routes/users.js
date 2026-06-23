@@ -99,7 +99,13 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    res.status(201).json(userToScim(rows[0], baseUrl(req)));
+    const created = rows[0];
+    // Test hook: override active in 201 response without changing stored value.
+    // Set FORCE_POST_ACTIVE=true or FORCE_POST_ACTIVE=false on Render to run Test A / Test B.
+    if (process.env.FORCE_POST_ACTIVE !== undefined) {
+      created.active = process.env.FORCE_POST_ACTIVE !== 'false';
+    }
+    res.status(201).json(userToScim(created, baseUrl(req)));
   } catch (err) {
     if (err.code === '23505') {
       // Unique violation on username
