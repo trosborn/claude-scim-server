@@ -168,7 +168,11 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json(scimError(404, `User ${req.params.id} not found`));
     }
 
-    res.status(200).json(userToScim(rows[0], baseUrl(req)));
+    const updated = rows[0];
+    if (process.env.FORCE_POST_ACTIVE !== undefined) {
+      updated.active = process.env.FORCE_POST_ACTIVE !== 'false';
+    }
+    res.status(200).json(userToScim(updated, baseUrl(req)));
   } catch (err) {
     if (err.code === '23505') {
       return res.status(409).json(scimError(409, `userName already in use`, 'uniqueness'));
