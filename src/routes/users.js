@@ -12,6 +12,24 @@ const {
 
 const router = Router();
 
+// ─── Test scenario routing ───────────────────────────────────────────────────
+// Route provisioning behavior based on email address so multiple scenarios
+// can be tested simultaneously without env var toggling.
+//
+//   *staged-inactive*  → always return active: false (POST + PUT)
+//   *staged-active*    → always return active: true  (POST + PUT)
+//   *staged-double-tap → return active: false on create (POST only),
+//                        then normal SCIM behavior on subsequent calls
+//
+// Returns true/false to override, or null to use the stored DB value.
+function resolveActiveOverride(email, isCreate) {
+  if (!email) return null;
+  if (email.includes('staged-inactive')) return false;
+  if (email.includes('staged-active')) return true;
+  if (email.includes('staged-double-tap') && isCreate) return false;
+  return null;
+}
+
 function baseUrl(req) {
   return `${req.protocol}://${req.get('host')}`;
 }
@@ -100,11 +118,8 @@ router.post('/', async (req, res) => {
     );
 
     const created = rows[0];
-    // Test hook: override active in 201 response without changing stored value.
-    // Set FORCE_POST_ACTIVE=true or FORCE_POST_ACTIVE=false on Render to run Test A / Test B.
-    if (process.env.FORCE_POST_ACTIVE !== undefined) {
-      created.active = process.env.FORCE_POST_ACTIVE !== 'false';
-    }
+    const activeOverride = resolveActiveOverride(primaryEmail, true);
+    if (activeOverride !== null) created.active = activeOverride;
     res.status(201).json(userToScim(created, baseUrl(req)));
   } catch (err) {
     if (err.code === '23505') {
@@ -169,9 +184,8 @@ router.put('/:id', async (req, res) => {
     }
 
     const updated = rows[0];
-    if (process.env.FORCE_POST_ACTIVE !== undefined) {
-      updated.active = process.env.FORCE_POST_ACTIVE !== 'false';
-    }
+    const activeOverride = resolveActiveOverride(updated.email, false);
+    if (activeOverride !== null) updated.active = activeOverride;
     res.status(200).json(userToScim(updated, baseUrl(req)));
   } catch (err) {
     if (err.code === '23505') {
